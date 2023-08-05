@@ -13,7 +13,8 @@ def get_gid():
         gid_temp.append(data["gameId"])
         return data["gameId"]
     except Exception as e:
-        return gid_temp[-1]
+        if len(gid_temp)!=0:
+            return gid_temp[-1]
 def get_sname():
     data=get_server_info_data()
     return data["name"]
@@ -51,7 +52,7 @@ def get_server_status():
     if len(server_status_temp)>50:
         del server_status_temp[0:40]
     if isEnd:
-        if server_status_temp[-1]=="going":
+        if len(server_status_temp)!=0 and server_status_temp[-1]=="going":
             server_status_temp.append("end")
             return "end"
     else:
@@ -178,62 +179,63 @@ def get_server_all_report():
     return report
 def get_server_kd_report():
     total_kill,total_death,team1_kill,team1_death,team2_kill,team2_death=get_server_kd()
-    report=f"dsz auto report:当前服务器总击杀数为{total_kill},总死亡数为{total_death},队伍1总击杀数为{team1_kill}，队伍1总死亡数为{team2_death},队伍1总击杀数为{team2_kill}，队伍1总死亡数为{team2_death}"
+    report=f"dsz report:总kill数为{total_kill},总dead数为{total_death},t1kill数为{team1_kill}，t1dead为{team2_death},t2kill数为{team2_kill}，t2dead数为{team2_death}"
     return report
 def get_server_rank_report():
     total_rank,team1_rank,team2_rank=get_server_mean_rank()
-    report=f"dsz auto report:当前服务器平均等级为{total_rank},队伍1平均等级为{team1_rank},队伍2平均等级为{team2_rank}"
+    report=f"dsz report:平均等级为{total_rank},team1平均等级为{team1_rank},team2平均等级为{team2_rank}"
     return report
-def get_server_kill_report():
+def get_server_kill_total_report():
     total_kill_max,total_kill_king,total_death_max,total_death_king,team1_kill_max,team1_kill_king,team2_kill_max,team2_kill_king=get_server_king()
-    report=f"dsz auto report:击杀王{total_kill_king}({total_kill_max}),狗带王{total_death_king}({total_death_max}),1队击杀王{team1_kill_king}({team1_kill_max}),2队击杀王{team2_kill_king}({team2_kill_max})"
+    report=f"dsz report:击杀王{total_kill_king}({total_kill_max}),狗带王{total_death_king}({total_death_max})"
+    return report
+def get_server_kill_team_report():
+    total_kill_max,total_kill_king,total_death_max,total_death_king,team1_kill_max,team1_kill_king,team2_kill_max,team2_kill_king=get_server_king()
+    report=f"dsz report:1队击杀王{team1_kill_king}({team1_kill_max}),2队击杀王{team2_kill_king}({team2_kill_max})"
     return report
 def get_server_luck_report():
     luck=get_server_luck()
-    report=f"dsz auto report:{luck}被选为幸运玩家"
+    report=f"dsz report:{luck}被选为幸运玩家"
     return report
 def get_server_admin_report():
     admin_num,admin_names=get_server_admin()
     if admin_num==0:
-        report=f"dsz auto report:当前无服务器管理在线,发现违规行为请加入kook反馈"
+        report=f"dsz report:当前无服务器管理在线,发现违规行为请加入kook反馈"
     else:
         admin_name="".join(i+" " for i in admin_names)
-        report=f"dsz auto report:当前{admin_num}位管理在线,admin id:{admin_name}"
+        report=f"dsz report:当前{admin_num}位管理在线,admin id:{admin_name}"
     return report
 def get_server_hot_weapon_report():
     hot_weapon,hot_grenade,hot_knife=get_server_hot()
-    report=f"dsz auto report:你知道吗?当前服务器使用最多的主武器是{hot_weapon}"
+    report=f"dsz report:你知道吗?当前使用最多的主武器是{hot_weapon}"
     return report
 def get_server_hot_grenade_report():
     hot_weapon,hot_grenade,hot_knife=get_server_hot()
-    report=f"dsz auto report:你知道吗?当前服务器使用最多的投掷物是{hot_grenade}"
+    report=f"dsz report:你知道吗?当前使用最多的投掷物是{hot_grenade}"
     return report        
 def get_server_hot_knife_report():
     hot_weapon,hot_grenade,hot_knife=get_server_hot()
-    report=f"dsz auto report:你知道吗?当前服务器使用最多的刀是{hot_knife}"
+    report=f"dsz report:你知道吗?当前使用最多的刀是{hot_knife}"
     return report
 def get_server_150_report():
     total_150, team1_150, team2_150=get_server_150()                 
-    report=f"dsz auto report:当前服务器150级玩家有{total_150}位,队伍1有{team1_150}位,队伍2有{team2_150}位"
+    report=f"dsz report:当前服务器150级玩家有{total_150}位,队伍1有{team1_150}位,队伍2有{team2_150}位"
     return report 
-def get_server_report_random():
-    randlist=[get_server_kd_report(),get_server_rank_report(),get_server_kill_report(),get_server_luck_report(),get_server_admin_report(),get_server_hot_weapon_report(),get_server_hot_knife_report(),get_server_150_report()]  
-    return   randlist[random.randint(0,len(randlist)-1)]  
 def get_server_tips():
     tips = [
     "dsz tips:服务器禁用炸药,1903exp,空爆迫击炮,闪光",
     "dsz tips:定点武器机枪是可以使用的,毕竟那是灵位,对吧",
     "dsz tips:at筒子可以使用,单发能瞄准,就是栓",
     "dsz tips:如果你想的话aa筒平射也可以",
-    "dsz tips:总所周知两个支援兵可以相互补给十字发射器",
+    "dsz tips:总所周知两个支援兵可以相互补给发射器",
     "dsz tips:midway是一种十分有趣的生物",
     "dsz tips:毒气绊雷和周遭警戒更配",
     "dsz tips:大栓服毒气绊雷玩法开创者是midway",
     "dsz tips:你知道ddf 1111古神吗?",
-    "dsz tips:关于大栓服为什么没有手枪这是一个说来话长的故事",
+    "dsz tips:大栓服为什么没有手枪这是一个说来话长的故事",
     "dsz tips:早期大栓服是抢攻为主的，但现在是以团队死斗为主",
     "dsz tips:或许你应该知道三炮打散ddf的故事",
-    "dsz tips:你或许好奇，dsz是什么意思，其实很简单就是dashuanzi(迫真",
+    "dsz tips:dsz是什么意思，其实很简单就是dashuanzi(迫真",
     "dsz tips:ddf又是什么呢?黑暗地牢(x),打东风(yes)麻将馆",
     "dsz tips:如果你有什么好的建议请加入kook或qq与its联系",
     "dsz tips:参与暖服可以自助恰v",
@@ -260,7 +262,8 @@ def get_server_report_random():
         report_funcs = [
             (get_server_kd_report, 2),
             (get_server_rank_report, 2),
-            (get_server_kill_report, 2),
+            (get_server_kill_total_report, 2),
+            (get_server_kill_team_report, 1),
             (get_server_luck_report, 1),
             (get_server_admin_report, 2),
             (get_server_hot_weapon_report, 1),
@@ -291,4 +294,14 @@ def get_server_report_random():
                 weights.append(weight)
         result=random.choices(choices, weights=weights)[0]
     return result           
-        
+def get_server_who_use_ban_weapon(banlist:list):
+    total_data=get_server_data_total()
+    result_names = []
+    for data in total_data:
+        for i in range(8):
+            weapon_key = "weaponS" + str(i)
+            if weapon_key in data and data[weapon_key]!=None and data[weapon_key]["name"] in banlist:
+                result_names.append({data["name"]:[data["personaId"],data[weapon_key]["name"]]})
+    return result_names
+            
+print(get_server_who_use_ban_weapon(["炸药", "特殊载具 空爆迫击炮", "M1903（实验）", "信号枪（闪光）"]))

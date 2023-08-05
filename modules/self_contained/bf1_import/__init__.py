@@ -9,7 +9,7 @@ import random
 from queue import Queue
 from zhconv import convert  
 from .utils import get_server_all_report,get_server_report_random
-from .utils import get_gid,get_mapname,get_server_status
+from .utils import get_gid,get_server_status,get_server_who_use_ban_weapon
 from utils.bf1.database import BF1DB
 from utils.bf1.default_account import BF1DA
 from khl import PublicMessage, MessageTypes
@@ -29,6 +29,8 @@ SEND_MESSAGE_CL=None
 SEND_MESSAGE_CLID='6514532698005389'
 REPORT_MESSAGE_CL=None
 REPORT_MESSAGE_CLID='6491099642265366'
+BANWEAPON_MESSAGE_CL=None
+BANWEAPON_MESSAGE_CLID='6507065112784612'
 # 初始化 UDP socket 用于接收游戏聊天消息
 recv_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 recv_socket.bind((APP_ADDRESS, APP_PORT))
@@ -59,7 +61,7 @@ def receive_chat():
         message = data.decode('utf-8')
         if message.startswith('{'):
             message_data = json.loads(message)
-            send_message=f"`{time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(time.time()))}`服务器ddf1玩家`{message_data['name']}`说{message_data['content']}\n"
+            send_message=f"`{time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(time.time()))}`服务器ddf1玩家`{message_data['name']}`说`{message_data['content']}`\n"
             message_set.add(send_message)
             if message_data['content'].isdigit():
                 if 1<=int(message_data['content'])<=5:
@@ -84,7 +86,7 @@ def send_chat_worker():
                 time.sleep(1)
                 # 发送完毕后移除消息
             except Exception as e:
-                print(f"发送游戏聊天消息时出错：{e}")
+                logger.error(f"发送游戏聊天消息时出错：{e}")
             finally:
                 message_queue.task_done()
                 time2=time.time()
@@ -97,8 +99,11 @@ send_thread.start()
 receive_thread = threading.Thread(target=receive_chat)
 receive_thread.daemon = True
 receive_thread.start()
-
-@bot.task.add_interval(seconds=60)
+#定时任务时间隔
+REPORTTIME=60
+VOTEMAPTIME=90
+VOTEMAPREPORTTIME=180
+@bot.task.add_interval(seconds=REPORTTIME)
 async def send_server_report():
     """
     将服务器报告添加到待发送消息队列中。
@@ -125,21 +130,22 @@ async def send_receive_chat():
     if SEND_MESSAGE_CL is None:
         SEND_MESSAGE_CL=await bot.client.fetch_public_channel(SEND_MESSAGE_CLID)
     await bot.client.send(target=SEND_MESSAGE_CL, content=send_message)
+#简报输出频道
 cl2=None
 @bot.task.add_interval(seconds=300)
 async def send_message_servers():
     global cl2
     if cl2 is None:
         cl2=await bot.client.fetch_public_channel('6491099642265366')
-    send_str=get_server_all_report()
-    await bot.client.send(target=cl2, content=send_str)  
- 
-# @bot.command(name="say", aliases=["s"], prefixes=["-"])   
-# async def say(msg: PublicMessage, content: str = None):
-#     message_queue.put(content)
+    try:
+        send_str=get_server_all_report()
+        await bot.client.send(target=cl2, content=send_str) 
+    except Exception as e:
+        await bot.client.send(target=cl2, content="正在结算中")  
 ##投票换图
 async def get_map_list_rand5():
     server_gid = get_gid()
+    if server_gid is None: return False
     # 获取地图池
     result = await (await BF1DA.get_api_instance()).getServerDetails(server_gid)
     if type(result) == str:
@@ -170,20 +176,25 @@ async def get_map_list_rand5():
     return map_list_rand5
 #定时发送投票消息
 randmap=[]
-@bot.task.add_interval(seconds=65)
+@bot.task.add_interval(seconds=VOTEMAPTIME)
 async def test():
     global randmap
     if randmap==[]:
         randmap=await get_map_list_rand5()
-    map_list_str=' '.join(f'{i+1}.{v.split("-")[1][:3]}({v.split("-")[0][:1]})' for i, v in enumerate(randmap))
-    vote_strat=f"dsz vote:投票换图,下局图池{map_list_str}"
-    vote_rule=f"dsz vote:投票规则,当局结束前在公屏发送纯数字即可,每人一票,本局游戏结束后切换"
+    #检测是否开启bf1 客户端 api
+    if randmap==False:
+        logger.error("请打开bf1客户端api")
+        return False
+    map_list_str=' '.join(f'{i+1}.{v.split("-")[1][:2]}({v.split("-")[0][:1]})' for i, v in enumerate(randmap))
+    vote_strat=f"vote:下局图池{map_list_str}"
+    time.sleep(3)
+    vote_rule=f"vote:当局结束前在公屏发数字即可每人一票本局游戏结束后切换"
     if get_server_status()=="going":
         message_queue.put(vote_strat)
         time.sleep(2)
         message_queue.put(vote_rule)
 #定时发送投票情况
-@bot.task.add_interval(seconds=180)
+@bot.task.add_interval(seconds=VOTEMAPREPORTTIME)
 async def test1():
     global VOTE_DICT
     if VOTE_DICT !={}:
@@ -193,16 +204,25 @@ async def test1():
         vote_info=f"dsz vote:当前得分最高是地图{max_count_values}票数{max_count},至少超过三票才会被切换"
         if get_server_status()=="going":
             message_queue.put(vote_info)
-
+KICK_DICT={}
 @bot.task.add_interval(seconds=1)
 async def Listen_stauts():
     global VOTE_DICT,randmap
+    #添加踢出字典
+    global KICK_DICT
+    banlist=await BF1DB.get_weapon_ban("default")
+    result_name=get_server_who_use_ban_weapon(banlist)
+    for v in result_name:
+        KICK_DICT[list(v.keys())[0]]=list(v.values())[0]
     if VOTE_DICT =={}:
         return False
-    if get_server_status()=="end" or get_server_status() is None:
+    status=get_server_status()
+    logger.info(f"status:{status}")
+    if status=="end":
         value_counts = Counter(VOTE_DICT.values())
         max_count = max(value_counts.values())
         max_count_values = [value for value, count in value_counts.items() if count == max_count][0]
+        VOTE_DICT={}
         logger.info(f"是否切图{max_count >=1}")
         if max_count >=1:
             server_gid=get_gid()
@@ -231,14 +251,54 @@ async def Listen_stauts():
                     map_index = map_index_list[0]
             result=await (await BF1DA.get_api_instance()).chooseLevel(guid,map_index)
             if type(result)==dict:
-                await bot.client.send(target=SEND_MESSAGE_CL, content=f"`{time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(time.time()))}`服务器地图通过投票更换为{map_index_list[0]}")
-        VOTE_DICT={}
+                await bot.client.send(target=SEND_MESSAGE_CL, content=f"`{time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(time.time()))}`服务器地图通过投票更换为`{map_index_list[0]}`")
         randmap=[]
-
-# @bot.task.add_interval(seconds=1)
-# async def test():
-#     mplist=await get_map_list()
-#     logger.info(mplist)
     
+#添加禁武器
+@bot.command(name="add_ban_wepaon",aliases=['banwepaon','bw'],prefixes=['-'])
+async def add_ban_wepaon(msg: PublicMessage,weapon:str,banname:str="default"):
+    banlist=[weapon]
+    if (await BF1DB.update_weapon_ban(banname,banlist))!=False:
+        await msg.reply(f"添加禁用{weapon}成功")
+    else:
+        await msg.reply(f"添加禁用{weapon}失败")
+@bot.command(name="list_ban_wepaon",aliases=['listbanwepaon','lbw'],prefixes=['-'])
+async def list_ban_wepaon(msg: PublicMessage,banname:str="default"):
+    banlist=await BF1DB.get_weapon_ban(banname)
+    await msg.reply("禁用武器列表如下："+"\n".join(i for i in banlist))
+@bot.command(name="del_ban_wepaon",aliases=['delbanwepaon','dbw'],prefixes=['-'])
+async def list_ban_wepaon(msg: PublicMessage,weapon:str,banname:str="default"):
+    if (await BF1DB.del_weapon_ban(banname,weapon))!=False:
+        await msg.reply(f"删除禁用{weapon}成功")
+    else:
+        await msg.reply(f"删除禁用{weapon}失败")   
 
-
+#自动踢出禁用
+send_kick_list=[]
+@bot.task.add_interval(seconds=2)
+async def Auto_kick():
+    global KICK_DICT,send_kick_list,BANWEAPON_MESSAGE_CL,BANWEAPON_MESSAGE_CLID
+    if KICK_DICT =={}:
+        return False
+    server_gid = get_gid()
+    if server_gid is None: return False
+    for k,v in KICK_DICT.items():
+        time_now = time.strftime('%Y/%m/%d/%H:%M:%S', time.localtime(time.time()))
+        send_str=f"`{time_now}`玩家`{k}`使用违规武器 `{v[1]}`" 
+        reason=f"ban {v}"
+        result = await (await BF1DA.get_api_instance()).kickPlayer(server_gid, v[0], reason)
+        logger.info(send_str)
+        if type(result) == str:
+            send_str+=" "+result+'\n'
+            return False
+        elif type(result) == dict:
+            send_str+=" "+"已踢出"+'\n'
+        if send_str not in send_kick_list:
+            send_kick_list.append(send_str)
+    if send_kick_list!=[]:
+        if BANWEAPON_MESSAGE_CL is None:
+            BANWEAPON_MESSAGE_CL=await bot.client.fetch_public_channel(BANWEAPON_MESSAGE_CLID)
+        text="/n".join(i for i in send_kick_list)
+        await bot.client.send(target=BANWEAPON_MESSAGE_CL, content=text)
+    send_kick_list=[]
+    KICK_DICT={}

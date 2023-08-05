@@ -2,4 +2,40 @@ botinfo:
   # bot超管号
   developer:
   - "3691545530"
-
+  token:
+  - "1sssssssscWjpQ=="
+  
+# bf1战绩默认查询账户的pid
+bf1:
+  default_account: 
+  - 1004962305210
+#服务器列表
+ddf:
+  ddf0:
+    sid:
+    - "11610057"
+    gid:
+    - "7889333520904"
+    guid:
+    - "27616fe0-b513-40c8-bf49-df0c33c281e1"
+  ddf1:
+    sid:
+    - "11234456"
+    gid:
+    - "8460234490554"
+    guid:
+    - "1711e179-69da-4a60-a3ed-1c3be71eea7f"
+  ddf2:
+    sid:
+    - "11189966"
+    gid:
+    - "8460235410600"
+    guid:
+    - "d7cdc553-e1d3-4591-bf86-a24257cafb7c"
+  idk1:
+    sid:
+    - "11876189"
+    gid:
+    - "7878612240874"
+    guid:
+    - "9c01da77-98a3-45a3-8b01-1cedc2b8fe6b" 

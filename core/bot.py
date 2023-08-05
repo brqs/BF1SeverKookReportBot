@@ -2,8 +2,13 @@ from khl import Bot, Message
 from loguru import logger
 from utils.bf1.default_account import BF1DA
 from utils.bf1.gateway_api import api_instance
+import yaml
+#从配置文件读取
+with open('./config/config.yaml', 'r', encoding='utf-8') as file:
+    data = yaml.safe_load(file)
+    token = data['botinfo'].get('token')[0]
 # init Bot
-bot = Bot(token='')
+bot = Bot(token)
 
 #检查默认账号
 @bot.on_startup
