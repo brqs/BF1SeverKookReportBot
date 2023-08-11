@@ -3,46 +3,18 @@ botinfo:
   developer:
   - "3691545530"
   token:
-  - "填写你的token"
+  - "your token"
   chat_channel:
   - '6514532698005389'
   report_channel:
   - '6491099642265366'
   autokick_channel:
   - '6507065112784612'
+  playerlist_channel:
+  - '8769112007789148'
   report_time:
-  - 60
+  - 30
 # bf1战绩默认查询账户的pid
 bf1:
   default_account: 
   - 1004962305210
-#服务器列表
-ddf:
-  ddf0:
-    sid:
-    - "11610057"
-    gid:
-    - "7889333520904"
-    guid:
-    - "27616fe0-b513-40c8-bf49-df0c33c281e1"
-  ddf1:
-    sid:
-    - "11234456"
-    gid:
-    - "8460234490554"
-    guid:
-    - "1711e179-69da-4a60-a3ed-1c3be71eea7f"
-  ddf2:
-    sid:
-    - "11189966"
-    gid:
-    - "8460235410600"
-    guid:
-    - "d7cdc553-e1d3-4591-bf86-a24257cafb7c"
-  idk1:
-    sid:
-    - "11876189"
-    gid:
-    - "7878612240874"
-    guid:
-    - "9c01da77-98a3-45a3-8b01-1cedc2b8fe6b" 

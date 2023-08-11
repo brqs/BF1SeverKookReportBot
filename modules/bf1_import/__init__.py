@@ -17,6 +17,8 @@ with open('./config/config.yaml', 'r', encoding='utf-8') as file:
     BANWEAPON_MESSAGE_CL=None
     BANWEAPON_MESSAGE_CLID=data['botinfo'].get('autokick_channel')[0]
     REPORTTIME=data['botinfo'].get('report_time')[0]
+    PLAYLIST_MESSAGE_CL=None
+    PLAYLIST_MESSAGE_CLID=data['botinfo'].get('playerlist_channel')[0]
     send_kick_list=[]
     KICK_DICT={}
 #聊天信息的定时转发，已过滤机器人消息
@@ -26,7 +28,7 @@ async def send_receive_chat():
     if SEND_MESSAGE_CL is None:
         SEND_MESSAGE_CL=await bot.client.fetch_public_channel(SEND_MESSAGE_CLID)
     message=gc.get_send_kook_message()
-    if message != "":
+    if message != "" and message != False:
         await bot.client.send(target=SEND_MESSAGE_CL, content=message)
 #简报输出频道
 @bot.task.add_interval(seconds=300)
@@ -99,8 +101,18 @@ async def auto_kick():
         await bot.client.send(target=BANWEAPON_MESSAGE_CL, content=text)
     send_kick_list=[]
     KICK_DICT={}
-    
-    
-    
-
+#玩家列表变动相关
+@bot.task.add_interval(seconds=30)
+async def check_playerlist():
+    new,left,swap=Clientutils.player_list_changes_report("all")
+    send=""
+    if new !=False: send+=new+"\n"
+    if left !=False: send+=left+"\n"
+    if swap !=False: send+=swap
+    Clientutils.player_list_changes_report("update")
+    global PLAYLIST_MESSAGE_CL,PLAYLIST_MESSAGE_CLID
+    if PLAYLIST_MESSAGE_CL is None:
+        PLAYLIST_MESSAGE_CL=await bot.client.fetch_public_channel(PLAYLIST_MESSAGE_CLID)
+    if send!="":     
+        await bot.client.send(target=PLAYLIST_MESSAGE_CL, content=send) 
     
