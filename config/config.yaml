@@ -3,8 +3,15 @@ botinfo:
   developer:
   - "3691545530"
   token:
-  - "1sssssssscWjpQ=="
-  
+  - "填写你的token"
+  chat_channel:
+  - '6514532698005389'
+  report_channel:
+  - '6491099642265366'
+  autokick_channel:
+  - '6507065112784612'
+  report_time:
+  - 60
 # bf1战绩默认查询账户的pid
 bf1:
   default_account: 
