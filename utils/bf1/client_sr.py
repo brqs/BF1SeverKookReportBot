@@ -6,6 +6,10 @@ import json
 import time
 from loguru import logger
 from .client_utils import Clientutils
+import json
+
+
+
 class GameChat:
     def __init__(self):
         # 游戏聊天服务器地址和端口
@@ -45,7 +49,7 @@ class GameChat:
                 time1=time.time()
                 message = f"#Chat.Send#{text}".encode('utf-8')
                 try:
-                    logger.info(f'发送{text}中')
+                    #logger.info(f'发送{text}中')
                     self.send_socket.sendto(message, (self.GAME_CHAT_ADDRESS, self.GAME_CHAT_PORT))
                     time.sleep(1)
                     # 发送完毕后移除消息
@@ -54,7 +58,7 @@ class GameChat:
                 finally:
                     self.message_queue.task_done()
                     time2=time.time()
-                    logger.info(f'发送完成，剩余消息队列长度为{self.message_queue.qsize()}，耗时{time2-time1}')
+                    #logger.info(f'发送完成，剩余消息队列长度为{self.message_queue.qsize()}，耗时{time2-time1}')
     def start(self):
         self.get_server_info()
         send_thread = threading.Thread(target=self.send_chat_worker)

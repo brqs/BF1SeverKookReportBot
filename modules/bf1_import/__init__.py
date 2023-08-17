@@ -37,7 +37,8 @@ async def send_message_servers():
     if REPORT_MESSAGE_CL is None:
         REPORT_MESSAGE_CL=await bot.client.fetch_public_channel(REPORT_MESSAGE_CLID)   
     send_report=Clientutils.get_server_report("all")
-    await bot.client.send(target=REPORT_MESSAGE_CL, content=send_report) 
+    if send_report!=False :
+        await bot.client.send(target=REPORT_MESSAGE_CL, content=send_report) 
 #随机输出报告
 @bot.task.add_interval(seconds=REPORTTIME)
 async def send_server_report():
@@ -115,4 +116,6 @@ async def check_playerlist():
         PLAYLIST_MESSAGE_CL=await bot.client.fetch_public_channel(PLAYLIST_MESSAGE_CLID)
     if send!="":     
         await bot.client.send(target=PLAYLIST_MESSAGE_CL, content=send) 
-    
+@bot.task.add_interval(seconds=0.25)
+async def status():
+    logger.info(f"status:{Clientutils.get_server_data('status')['stateName']},InGame:{Clientutils.get_server_data('status')['statusName']}, isChatManagerValid:{Clientutils.get_server_data('chat')['isChatManagerValid']},status:{Clientutils.get_server_status()}")

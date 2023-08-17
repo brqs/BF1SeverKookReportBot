@@ -10,7 +10,8 @@ class Utils():
         self.server_status_temp = []
         self.total_list, self.team1_list, self.team2_list = self.get_server_report_data(
             "playerlist")
-        self.servername="ddf"
+        self.servername = "ddf"
+
     def get_gid(self):
         if len(self.gid_temp) > 50:
             del self.gid_temp[0:45]
@@ -54,6 +55,7 @@ class Utils():
         url_server = 'http://127.0.0.1:10086/Server/GetServerData'
         url_status = "http://127.0.0.1:10086/Game/GetGameStatus"
         url_player = "http://127.0.0.1:10086/Player/GetLocalPlayer"
+        url_chat="http://127.0.0.1:10086/Game/GetChatStatus"
         headers = {"Connection": "keep-alive"}
         timeout = 3
         try:
@@ -79,6 +81,10 @@ class Utils():
                 response = requests.get(
                     url_player, headers=headers, timeout=timeout)
                 return response.json()['data']
+            if mode == "chat":
+                response = requests.get(
+                    url_chat, headers=headers, timeout=timeout)
+                return response.json()['data']
         except:
             logger.warning("未获取数据，请检查服务器是否开启")
             return False
@@ -92,7 +98,7 @@ class Utils():
 
     def get_server_report_data(self, mode: str) -> tuple or bool:
         total_data, team1_data, team2_data = self.get_server_data()
-        self.servername=self.get_server_data("server")["name"][:10]
+        self.servername = self.get_server_data("server")["name"][:10]
         try:
             if mode == 'kd':
                 total_kill = sum([d.get('kill', 0) for d in total_data])
@@ -225,7 +231,7 @@ class Utils():
 
     def get_server_tips(self) -> str:
         tips = [
-            "dsz tips:服务器禁用炸药,1903exp,空爆迫击炮,闪光",
+            "dsz tips:服务器ddf1禁用炸药,1903exp,空爆迫击炮,闪光",
             "dsz tips:定点武器机枪是可以使用的,毕竟那是灵位,对吧",
             "dsz tips:at筒子可以使用,单发能瞄准,就是栓",
             "dsz tips:如果你想的话aa筒平射也可以",
@@ -254,7 +260,7 @@ class Utils():
 
     def get_server_rules(self) -> str:
         rules = [
-            "dsz rules:服务器禁用炸药,1903exp,空爆迫击炮,闪光,其他武器无限制",
+            "dsz rules:服务器ddf1禁用炸药,1903exp,空爆迫击炮,闪光,其他武器无限制",
             "dsz rules:如果你对该机器人功能感兴趣请加入ddf kook服务器:https://kook.top/A17StS",
             "dsz rules:出现外挂,请加入qq群或者kook向管理员反馈",
             "dsz rules:150请自觉平衡不要抱团捞薯",
@@ -357,8 +363,12 @@ class Utils():
         return result_names
 
     def get_team_new(self):
-        total_list, team1_list, team2_list = self.get_server_report_data(
-            "playerlist")
+        try:
+            total_list, team1_list, team2_list = self.get_server_report_data(
+                "playerlist")
+        except Exception as e:
+            logger.warning("服务器加载中或未开启")
+            return [], [], [], self.total_list, self.team1_list, self.team2_list
         # 获取 team1 和 team2 中的玩家名称集合
         team1_names = set(player['name'] for player in self.team1_list)
         team2_names = set(player['name'] for player in self.team2_list)
@@ -373,41 +383,47 @@ class Utils():
         new_player_lst = []
         for player in total_list:
             if player['name'] in new_players:
-                new_player_lst.append([player['name'],player['rank']])
+                new_player_lst.append([player['name'], player['rank']])
         left_player_lst = []
         for player in self.total_list:
             if player['name'] in left_players:
-                left_player_lst.append([player['name'],player['rank'],player['kill'],player['dead']])
-        swapped_players1=team1_names & new_team2_names 
-        swapped_players2=team2_names & new_team1_names
-        swapped_players_lst=[]
+                left_player_lst.append(
+                    [player['name'], player['rank'], player['kill'], player['dead']])
+        swapped_players1 = team1_names & new_team2_names
+        swapped_players2 = team2_names & new_team1_names
+        swapped_players_lst = []
         for player in total_list:
             if player['name'] in swapped_players1:
-                swapped_players_lst.append([player['name'], player['rank'],"1"])
+                swapped_players_lst.append(
+                    [player['name'], player['rank'], "1"])
             elif player['name'] in swapped_players2:
-                swapped_players_lst.append([player['name'], player['rank'],"2"])
-        return new_player_lst,left_player_lst,swapped_players_lst,total_list, team1_list, team2_list
-    def player_list_changes_report(self,mode=str):
-        new_player_lst,left_player_lst,swapped_players_lst,total_list, team1_list, team2_list=self.get_team_new()
-        if mode=="new":
-            if new_player_lst !=[]:
+                swapped_players_lst.append(
+                    [player['name'], player['rank'], "2"])
+        return new_player_lst, left_player_lst, swapped_players_lst, total_list, team1_list, team2_list
+
+    def player_list_changes_report(self, mode=str):
+        new_player_lst, left_player_lst, swapped_players_lst, total_list, team1_list, team2_list = self.get_team_new()
+        if mode == "new":
+            if new_player_lst != []:
                 return "\n".join(f"`{time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(time.time()))}`玩家`{i[0]}`等级`{i[1]}`加入服务器`{self.servername}`" for i in new_player_lst)
             else:
                 return False
-        elif mode=="left":
-            if left_player_lst !=[]:
+        elif mode == "left":
+            if left_player_lst != []:
                 return "\n".join(f"`{time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(time.time()))}`玩家`{i[0]}`等级`{i[1]}`击杀`{i[3]}`名薯条后心满意足的离开了服务器`{self.servername}`" for i in left_player_lst)
             else:
                 return False
-        elif mode=="swap":
-            if swapped_players_lst !=[]:
+        elif mode == "swap":
+            if swapped_players_lst != []:
                 return "\n".join(f"`{time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(time.time()))}`玩家`{i[0]}`等级`{i[1]}`由队伍{1 if i[2]=='1' else 2}==>队伍{2 if i[2]=='1' else 1}" for i in swapped_players_lst)
             else:
                 return False
-        elif mode=="all":
-            return self.player_list_changes_report("new"),self.player_list_changes_report("left"),self.player_list_changes_report("swap")
-        elif mode=="update":
-            self.total_list, self.team1_list, self.team2_list=total_list, team1_list, team2_list 
+        elif mode == "all":
+            return self.player_list_changes_report("new"), self.player_list_changes_report("left"), self.player_list_changes_report("swap")
+        elif mode == "update":
+            self.total_list, self.team1_list, self.team2_list = total_list, team1_list, team2_list
+
+
 Clientutils = Utils()
 # time.sleep(60)
 # print(Clientutils.get_team_new()[0:3])
