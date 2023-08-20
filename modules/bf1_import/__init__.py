@@ -2,10 +2,14 @@ from core.bot import bot
 from loguru import logger
 import time
 import yaml
+from collections import Counter
+import random
+import difflib
 from utils.bf1.client_utils import  Clientutils
 from utils.bf1.database import BF1DB
 from utils.bf1.default_account import BF1DA
 from utils.bf1.client_sr import gc 
+from utils.bf1.client_records import gk
 from khl import PublicMessage
 #从配置文件读取
 with open('./config/config.yaml', 'r', encoding='utf-8') as file:
@@ -21,6 +25,7 @@ with open('./config/config.yaml', 'r', encoding='utf-8') as file:
     PLAYLIST_MESSAGE_CLID=data['botinfo'].get('playerlist_channel')[0]
     send_kick_list=[]
     KICK_DICT={}
+    VOTE_NUM=data['botinfo'].get('vote_num')[0]
 #聊天信息的定时转发，已过滤机器人消息
 @bot.task.add_interval(seconds=6)
 async def send_receive_chat():
@@ -67,7 +72,7 @@ async def list_ban_wepaon(msg: PublicMessage,weapon:str,banname:str="default"):
         await msg.reply(f"删除禁用{weapon}失败")   
 #自动踢出禁用
 @bot.task.add_interval(seconds=2)
-async def test1():
+async def check():
     #添加踢出字典
     global KICK_DICT
     banlist=await BF1DB.get_weapon_ban("default")
@@ -116,6 +121,102 @@ async def check_playerlist():
         PLAYLIST_MESSAGE_CL=await bot.client.fetch_public_channel(PLAYLIST_MESSAGE_CLID)
     if send!="":     
         await bot.client.send(target=PLAYLIST_MESSAGE_CL, content=send) 
-@bot.task.add_interval(seconds=0.25)
+#击杀记录计入数据库
+@bot.task.add_interval(seconds=30)
 async def status():
-    logger.info(f"status:{Clientutils.get_server_data('status')['stateName']},InGame:{Clientutils.get_server_data('status')['statusName']}, isChatManagerValid:{Clientutils.get_server_data('chat')['isChatManagerValid']},status:{Clientutils.get_server_status()}")
+    for i in range(gk.return_queue.qsize()):
+        data=gk.return_queue.get()
+        await BF1DB.add_record(data)
+#投票换图
+
+@bot.task.add_interval(seconds=0.5)
+async def vote_map():
+    global VOTE_NUM
+    if gc.mapdict=={}:
+        return False
+    try:
+        status=Clientutils.get_server_data("status")["stateName"]
+    except Exception as e:
+        status = "error"
+    values = list(gc.mapdict.values())
+    counter = Counter(values)
+    most_common_value, count = counter.most_common(1)[0]
+    if status=="Waiting For Level Loaded":
+        if count>=VOTE_NUM:
+            server_gid=Clientutils.get_gid()
+            result = await (await BF1DA.get_api_instance()).getServerDetails(server_gid)
+            guid = result['result']['guid']
+            map_index = gc.map[int(most_common_value)-1] 
+            i = 0
+            map_list=[]
+            result = result['result']
+            for item in result["rotation"]:
+                map_list.append(f"{item['modePrettyName']}-{item['mapPrettyName']}")
+                i += 1
+            map_index_list = []
+            for map_temp in map_list:
+                if map_index in map_temp:
+                    if map_temp not in map_index_list:
+                        map_index_list.append(map_temp)
+            if len(map_index_list) == 0:
+                map_index_list = list(set(difflib.get_close_matches(map_index, map_list)))
+            if len(map_index_list) == 1:
+                if type(map_index_list[0]) != int:
+                    map_index = map_list.index(map_index_list[0])
+                else:
+                    map_index = map_index_list[0]
+            result=await (await BF1DA.get_api_instance()).chooseLevel(guid,map_index)
+            message=f"{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))}服务器地图通过投票更换为{map_index_list[0]}"
+            gc.message_queue.put(message)
+            message=f"`{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))}`服务器地图通过投票更换为`{map_index_list[0]}`"
+            await bot.client.send(target=SEND_MESSAGE_CL, content=message)
+            gc.map=[]
+            gc.mapdict={}
+        else:
+            gc.map=[]
+            gc.mapdict={}
+    else:
+        return False
+async def get_map_list_rand5():
+    server_gid = Clientutils.get_gid()
+    # 获取地图池
+    result = await (await BF1DA.get_api_instance()).getServerDetails(server_gid)
+    if type(result) == str:
+        return f"获取图池时网络出错!"
+    map_list = []
+    choices = []
+    i = 0
+    result = result['result']
+    for item in result["rotation"]:
+        map_list.append(
+            f"{item['modePrettyName']}-{item['mapPrettyName']}●\n".replace('流血', '流\u200b血')
+            if (
+                    item['modePrettyName'] == '行動模式'
+                    and
+                    item['mapPrettyName'] in
+                    [
+                        '聖康坦的傷痕', '窩瓦河',
+                        '海麗絲岬', '法歐堡', '攻佔托爾', '格拉巴山',
+                        '凡爾登高地', '加利西亞', '蘇瓦松', '流血宴廳', '澤布呂赫',
+                        '索姆河', '武普庫夫山口', '龐然闇影'
+                    ]
+            )
+            else f"{item['modePrettyName']}-{item['mapPrettyName']}".replace('流血', '流\u200b血')
+        )
+        choices.append(str(i))
+        i += 1
+    map_list_rand5 = random.sample(map_list, 5)
+    return map_list_rand5
+@bot.task.add_interval(seconds=30)
+async def vote_map_info():
+    if gc.map==[]:
+        gc.map=await get_map_list_rand5()
+        logger.info(f"初始化随机切换地图池{gc.map}")
+    map_list_str=' '.join(f'{i+1}.{v.split("-")[1][:4]}({v.split("-")[0][:2]})' for i, v in enumerate(gc.map))
+    vote_strat=f"dsz vote:投票换图,下局图池{map_list_str}"
+    gc.message_queue.put(vote_strat)
+    if gc.mapdict!={}:
+        values = list(gc.mapdict.values())
+        counter = Counter(values)
+        most_common_value, count = counter.most_common(1)[0]
+        gc.message_queue.put(f"dsz vote:当前投票最多的地图是{gc.map[int(most_common_value)-1]}({count}),超过三票才会切换")

@@ -7,9 +7,6 @@ import time
 from loguru import logger
 from .client_utils import Clientutils
 import json
-
-
-
 class GameChat:
     def __init__(self):
         # 游戏聊天服务器地址和端口
@@ -34,6 +31,8 @@ class GameChat:
         self.message_set={'存储聊天信息的集合'}
         self.sended_message_set={'存储聊天信息的集合'}
         self.servername="ddf1"
+        self.mapdict={}
+        self.map=[]
         self.get_server_info()
     def send_chat_worker(self):
         """
@@ -79,6 +78,11 @@ class GameChat:
                 message_data = json.loads(message)
                 send_message=f"`{time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(time.time()))}`服务器{self.servername}玩家`{message_data['name']}`说`{message_data['content']}`\n"
                 self.message_set.add(send_message)
+                try:
+                    if message_data['content'].replace('\x00', '') in ["1","2","3","4","5"]:
+                        self.mapdict[message_data['name']]=message_data['content'].replace('\x00', '')
+                except Exception as e:
+                    logger.exception(e)
     def get_server_info(self):
         try:
             if Clientutils.get_server_Ingame():
@@ -95,6 +99,8 @@ class GameChat:
             self.sended_message_set.add(e)
         sorted_messages = sorted(self.send_message_set, key=self.sort_by_time)
         send_message="\n".join(s for s in sorted_messages if self.player not in s)
+        self.message_set={'存储聊天信息的集合'}
+        self.sended_message_set={'存储聊天信息的集合'}
         return send_message
     def sort_by_time(self,message):
         time_str = message.split('`')[1]  # 解析出时间字符串

@@ -14,6 +14,8 @@ botinfo:
   - '8769112007789148'
   report_time:
   - 30
+  vote_num:
+  - 1
 # bf1战绩默认查询账户的pid
 bf1:
   default_account: 

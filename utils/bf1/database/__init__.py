@@ -4,7 +4,7 @@ from typing import Union, List, Tuple, Dict, Any
 from loguru import logger
 from sqlalchemy import select, func
 
-from utils.bf1.database.tables import orm, Bf1Account,Permission,Banweapon
+from utils.bf1.database.tables import orm, Bf1Account,Permission,Banweapon,KillRecord
 import uuid
 import json
 
@@ -211,5 +211,24 @@ class bf1_db:
             logger.exception(e)
             return False
         return True
-
+    @staticmethod
+    async def add_record(data: list) -> bool:
+        ddata={
+            "time":data[-1],
+            "killedBy":data[0],
+            "isHeadshot":data[1],
+            "killedType":data[2],
+            "killerPid":data[3],
+            "killerClan":data[4],
+            "killerName":data[5],
+            "killerTeam":data[6],
+            "victimPid":data[7],
+            "victimClan":data[8],
+            "victimName":data[9],
+            "victimTeam":data[10],
+            "serverName":data[11],
+            "serverGameId":data[12],
+            "serverMode":data[13],
+            "serverMap":data[14]}
+        await orm.add(KillRecord, ddata)
 BF1DB = bf1_db()

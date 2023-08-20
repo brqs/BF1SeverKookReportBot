@@ -36,3 +36,23 @@ class Banweapon(orm.Base):
     id = Column(Integer, primary_key=True)
     ban_name = Column(String)
     ban_weapon_list =  Column(JSON)
+class KillRecord(orm.Base):
+    """击杀记录表"""
+    __tablename__ = "killrecord"
+    id = Column(Integer, primary_key=True)
+    time=Column(DateTime)
+    killedBy=Column(String)
+    isHeadshot=Column(String)
+    killedType=Column(String)
+    killerPid=Column(String)
+    killerClan=Column(String)
+    killerName=Column(String)
+    killerTeam=Column(String)
+    victimPid=Column(String)
+    victimClan=Column(String)
+    victimName=Column(String)
+    victimTeam=Column(String)
+    serverName=Column(String)
+    serverGameId=Column(String)
+    serverMode=Column(String)
+    serverMap=Column(String)
